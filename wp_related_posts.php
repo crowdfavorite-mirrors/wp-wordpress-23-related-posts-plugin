@@ -1,14 +1,14 @@
 <?php
 /*
 Plugin Name: WordPress Related Posts
-Version: 2.1
+Version: 2.2
 Plugin URI: http://wordpress.org/extend/plugins/wordpress-23-related-posts-plugin/
-Description: Generate a related posts list via tags of WordPress
+Description: Quickly increase your readers' engagement with your posts by adding Related Posts in the footer of your content.
 Author: Jure Ham
 Author URI: http://wordpress.org/extend/plugins/wordpress-23-related-posts-plugin/
 */
 
-define('WP_RP_VERSION', '2.1');
+define('WP_RP_VERSION', '2.2');
 
 include_once(dirname(__FILE__) . '/config.php');
 include_once(dirname(__FILE__) . '/lib/stemmer.php');
@@ -47,7 +47,7 @@ function wp_rp_add_related_posts_hook($content) {
 	global $wp_rp_output, $post;
 	$options = wp_rp_get_options();
 
-	if ((is_single() && $options["on_single_post"]) || (is_feed() && $options["on_rss"])) {
+	if (($options["on_single_post"] && is_single() && !is_page() && !is_attachment()) || (is_feed() && $options["on_rss"])) {
 		if (!isset($wp_rp_output[$post->ID])) {
 			$wp_rp_output[$post->ID] = wp_rp_get_related_posts();
 		}
@@ -87,6 +87,10 @@ function wp_rp_fetch_posts_and_title() {
 	wp_rp_append_posts($related_posts, 'wp_rp_fetch_related_posts');
 	wp_rp_append_posts($related_posts, 'wp_rp_fetch_random_posts');
 
+	if(function_exists('qtrans_postsFilter')) {
+		$related_posts = qtrans_postsFilter($related_posts);
+	}
+
 	return array(
 		"posts" => $related_posts,
 		"title" => $title
@@ -98,8 +102,15 @@ function wp_rp_generate_related_posts_list_items($related_posts) {
 	$output = "";
 	$i = 0;
 
+	$statistics_enabled = $options['ctr_dashboard_enabled'];
+
 	foreach ($related_posts as $related_post ) {
-		$output .= '<li position="' . $i++ . '">';
+		$data_attrs = '';
+		if ($statistics_enabled) {
+			$data_attrs .= 'data-position="' . $i++ . '" data-poid="in-' . $related_post->ID . '" ';
+		}
+
+		$output .= '<li ' . $data_attrs . '>';
 
 		$img = wp_rp_get_post_thumbnail_img($related_post);
 		if ($img) {
@@ -138,7 +149,7 @@ function wp_rp_should_exclude() {
 
 	$options = wp_rp_get_options();
 
-	if($options['exclude_categories'] === '') { return false; }
+	if(!$options['exclude_categories']) { return false; }
 
 	$q = 'SELECT COUNT(tt.term_id) FROM '. $wpdb->term_taxonomy.' tt, ' . $wpdb->term_relationships.' tr WHERE tt.taxonomy = \'category\' AND tt.term_taxonomy_id = tr.term_taxonomy_id AND tr.object_id = '.$post->ID . ' AND tt.term_id IN (' . $options['exclude_categories'] . ')';
 
@@ -148,6 +159,39 @@ function wp_rp_should_exclude() {
 
 	return $count > 0;
 }
+
+function wp_rp_ajax_blogger_network_blacklist_callback() {
+	if (!current_user_can('delete_users')) {
+		die();
+	}
+
+	$sourcefeed = (int) $_GET['sourcefeed'];
+
+	$meta = wp_rp_get_meta();
+
+	$blog_id = $meta['blog_id'];
+	$auth_key = $meta['auth_key'];
+	$req_options = array(
+		'timeout' => 5
+	);
+	$url = WP_RP_CTR_DASHBOARD_URL . "blacklist/?blog_id=$blog_id&auth_key=$auth_key&sfid=$sourcefeed";
+	$response = wp_remote_get($url, $req_options);
+
+	if (wp_remote_retrieve_response_code($response) == 200) {
+		$body = wp_remote_retrieve_body($response);
+		if ($body) {
+			$doc = json_decode($body);
+			if ($doc && $doc->status === 'ok') {
+				header_remove();
+				header('Content-Type: text/javascript');
+				echo "if(window['_wp_rp_blacklist_callback$sourcefeed']) window._wp_rp_blacklist_callback$sourcefeed();";
+			}
+		}
+	}
+	die();
+}
+
+add_action('wp_ajax_rp_blogger_network_blacklist', 'wp_rp_ajax_blogger_network_blacklist_callback');
 
 function wp_rp_head_resources() {
 	global $post, $wpdb;
@@ -163,7 +207,7 @@ function wp_rp_head_resources() {
 	$output = '';
 
 	// turn off statistics or recommendations on non-singular posts
-	if(is_single()) {
+	if (is_single() && !is_page() && !is_attachment()) {
 		$statistics_enabled = $options['ctr_dashboard_enabled'] && $meta['blog_id'] && $meta['auth_key'];
 		$remote_recommendations = $meta['remote_recommendations'] && $statistics_enabled;
 	}
@@ -185,7 +229,10 @@ function wp_rp_head_resources() {
 			"\twindow._wp_rp_post_tags = {$post_tags};\n" .
 			"\twindow._wp_rp_static_base_url = '" . esc_js(WP_RP_STATIC_BASE_URL) . "';\n" .
 			"\twindow._wp_rp_promoted_content = " . ($options['promoted_content_enabled'] ? 'true' : 'false') . ";\n" .
+			(wp_is_mobile() && $options['show_RP_in_posts'] ? "\twindow._wp_rp_show_rp_in_posts = true;\n" : '') .
 			"\twindow._wp_rp_plugin_version = '" . WP_RP_VERSION . "';\n" .
+			"\twindow._wp_rp_traffic_exchange = " . ($options['traffic_exchange_enabled'] ? 'true' : 'false') . ";\n" .
+			(current_user_can('delete_users') ? "\twindow._wp_rp_admin_ajax_url = '" . admin_url('admin-ajax.php') . "';\n" : '') .
 			"</script>\n";
 	}
 
@@ -206,8 +253,8 @@ function wp_rp_head_resources() {
 		}
 
 		$output .= '<link rel="stylesheet" href="' . $theme_url . $options['theme_name'] . '?version=' . WP_RP_VERSION . '" />' . "\n";
-		if ($options['theme_name'] === 'custom.css') {
-			$output .= '<style type="text/css">' . $options['theme_custom_css'] . "</style>\n";
+		if ($options['custom_theme_enabled']) {
+			$output .= '<style type="text/css">' . "\n" . $options['theme_custom_css'] . "</style>\n";
 		}
 	}
 
@@ -233,17 +280,19 @@ function wp_rp_get_related_posts($before_title = '', $after_title = '') {
 	$related_posts = $posts_and_title['posts'];
 	$title = $posts_and_title['title'];
 
+	if (!$related_posts) {
+		return;
+	}
+
 	$css_classes = 'related_post wp_rp';
 	if ($options['enable_themes']) {
 		$css_classes .= ' ' . str_replace(array('.css', '-'), array('', '_'), esc_attr('wp_rp_' . $options['theme_name']));
 	}
 
-	if ($related_posts) {
-		$output = wp_rp_generate_related_posts_list_items($related_posts);
-		$output = '<ul class="' . $css_classes . '" style="visibility: ' . ($remote_recommendations ? 'hidden' : 'visible') . '">' . $output . '</ul>';
-		if($remote_recommendations) {
-			$output = $output . '<script type="text/javascript">window._wp_rp_callback_widget_exists && window._wp_rp_callback_widget_exists();</script>';
-		}
+	$output = wp_rp_generate_related_posts_list_items($related_posts);
+	$output = '<ul class="' . $css_classes . '" style="visibility: ' . ($remote_recommendations ? 'hidden' : 'visible') . '">' . $output . '</ul>';
+	if($remote_recommendations) {
+		$output = $output . '<script type="text/javascript">window._wp_rp_callback_widget_exists && window._wp_rp_callback_widget_exists();</script>';
 	}
 
 	if ($title != '') {
