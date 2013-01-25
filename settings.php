@@ -137,7 +137,7 @@ function wp_rp_settings_styles() {
 	wp_enqueue_style("wp_rp_dashaboard_style", plugins_url("static/css/dashboard.css", __FILE__));
 }
 
-function wp_rp_register_blog() {
+function wp_rp_register_blog($account_type='other') {
 	$meta = wp_rp_get_meta();
 
 	$req_options = array(
@@ -145,6 +145,7 @@ function wp_rp_register_blog() {
 	);
 
 	$response = wp_remote_get(WP_RP_CTR_DASHBOARD_URL . 'register/?blog_url=' . get_bloginfo('wpurl') .
+			'&account_type=' . $account_type .
 			($meta['new_user'] ? '&new' : '') .
 			($meta['turn_on_button_pressed'] ? ('&turn_on=' . $meta['turn_on_button_pressed']) : ''),
 		$req_options);
@@ -255,9 +256,9 @@ function wp_rp_settings_page() {
 			'ctr_dashboard_enabled' => isset($postdata['wp_rp_ctr_dashboard_enabled']),
 			'promoted_content_enabled' => isset($postdata['wp_rp_promoted_content_enabled']),
 			'enable_themes' => isset($postdata['wp_rp_enable_themes']),
-			'show_RP_in_posts' => isset($postdata['wp_rp_show_RP_in_posts']),
 			'custom_theme_enabled' => isset($postdata['wp_rp_custom_theme_enabled']),
-			'traffic_exchange_enabled' => isset($postdata['wp_rp_traffic_exchange_enabled'])
+			'traffic_exchange_enabled' => isset($postdata['wp_rp_traffic_exchange_enabled']),
+			'max_related_post_age_in_days' => (isset($postdata['wp_rp_max_related_post_age_in_days']) && is_numeric(trim($postdata['wp_rp_max_related_post_age_in_days']))) ? intval(trim($postdata['wp_rp_max_related_post_age_in_days'])) : 0
 		);
 
 		if(!isset($postdata['wp_rp_exclude_categories'])) {
@@ -329,7 +330,8 @@ function wp_rp_settings_page() {
 	}
 
 	if($options['ctr_dashboard_enabled'] && (!$meta['blog_id'] || !$meta['auth_key'])) {
-		wp_rp_register_blog();
+		$account_type = isset($postdata['wp_rp_account_type']) ? $postdata['wp_rp_account_type'] : 'other';
+		wp_rp_register_blog($account_type);
 	}
 
 ?>
@@ -357,6 +359,9 @@ function wp_rp_settings_page() {
 		<?php if($meta['show_traffic_exchange'] && $options['traffic_exchange_enabled']): ?>
 		<input type="hidden" id="wp_rp_show_traffic_exchange_statistics" value="1" />
 		<?php endif; ?>
+		<?php if($meta['remote_recommendations'] && $options['promoted_content_enabled']): ?>
+		<input type="hidden" id="wp_rp_show_promoted_content_statistics" value="1" />
+		<?php endif; ?>
 
 		<div class="header">
 			<div class="support">
@@ -367,26 +372,50 @@ function wp_rp_settings_page() {
 			</div>
 			<h2 class="title"><?php _e("Related Posts",'wp_related_posts');?></h2>
 		</div>
-		<div id="wp-rp-survey" class="updated highlight" style="display:none;"><p><?php _e("Please fill out",'wp_related_posts');?> <a class="link" target="_blank" href="http://wprelatedposts.polldaddy.com/s/quick-survey"><?php _e("a quick survey", 'wp_related_posts');?></a>.<a href="#" class="close" style="float: right;">x</a></p></div>
 
 		<?php wp_rp_print_notifications(); ?>
 
 		<?php if($meta['show_turn_on_button']): ?>
 		<div id="wp_rp_turn_on_statistics">
-			<table cellspacing="0" cellpadding="0"><tbody><tr>
-				<td>
-					<h2>
-						Turn on Advanced Features
-					</h2>
-					<ul>
-						<li>Real-time Analytics*</li>
-						<li>Thumbnail Support</li>
-						<li>Promoted Content</li>
-					</ul>
-				</td><td>
-					<a class="turn-on" href="#">Turn on</a>
-				</td>
-			</tr></tbody></table>
+			<ul>
+				<li>
+					<div>
+						<ul>
+							<li class="title"><h3>Basic</h3></li>
+							<li>Related Posts</li>
+							<li>Settings</li>
+							<li>Analytics</li>
+							<li class="turn-on-wrap"><a data-type="basic" href="#" class="zemanta-button turn-on">Turn on</a></li>
+						</ul>
+					</div>
+				</li>
+				<li>
+					<div>
+						<ul>
+							<li class="title"><h3>Advanced</h3></li>
+							<li>Related Posts</li>
+							<li>Settings</li>
+							<li>Analytics</li>
+							<li>Increase pageviews<br />(traffic exchange)</li>
+							<li class="turn-on-wrap"><a data-type="advanced" href="#" class="zemanta-button turn-on">Turn on</a></li>
+						</ul>
+					</div>
+				</li>
+				<li>
+					<div>
+						<ul>
+							<li class="title"><h3>Publisher</h3></li>
+							<li>Related Posts</li>
+							<li>Settings</li>
+							<li>Analytics</li>
+							<li>Increase pageviews<br />(traffic exchange)</li>
+							<li>Earn money<br />(promoted posts)</li>
+							<li class="turn-on-wrap"><a data-type="publisher" href="#" class="zemanta-button turn-on">Turn on</a></li>
+						</ul>
+					</div>
+				</li>
+			</ul>
+			<p>Analytics, traffic exchange and promoted posts are provided via <a target="_blank" href="http://related-posts.com/tos/">3rd party service</a>.</p>
 		</div>
 		<?php endif; ?>
 
@@ -454,8 +483,20 @@ jQuery(function($) {
 		<iframe id="wp_rp_blogger_network_hidden_iframe" name="wp_rp_blogger_network_hidden_iframe" style="display: none"></iframe>
 		<?php endif; ?>
 
-		<form method="post" enctype="multipart/form-data" action="" id="wp_rp_settings_form">
+		<form method="post" enctype="multipart/form-data" action="" id="wp_rp_settings_form" style="display: <?php echo ($meta['show_turn_on_button'] ? 'none' : 'block'); ?>;">
 			<?php if ($options['ctr_dashboard_enabled']): ?>
+			<div id="wp_rp_earnings_holder" style="display:none;">
+				<h2><?php _e('Earnings', 'wp_related_posts'); ?></h2>
+				<div class="container">
+					<p>By displaying promoted posts on your site you've already earned:</p>
+					<div id="wp_rp_earnings_wrap">
+						<span class="num"></span>
+						<a href="#" class="claim disabled">claim
+							<span class="payout-explain">You can claim the money when it reaches <span class="payout"></span>.</span>
+						</a>
+					</div>
+				</div>
+			</div>
 			<div id="wp_rp_statistics_holder">
 				<div id="wp_rp_statistics_collapsible" block="statistics" class="collapsible<?php if(!$meta['show_statistics']) { echo " collapsed"; } ?>">
 					<a href="#" class="collapse-handle">Collapse</a>
@@ -489,6 +530,18 @@ jQuery(function($) {
 							<td>
 							  <input name="wp_rp_max_related_posts" type="number" step="1" id="wp_rp_max_related_posts" class="small-text" min="1" value="<?php esc_attr_e($options['max_related_posts']); ?>" />
 							</td>
+						</tr>
+						<tr valign="top">
+							<th scope="row"></th>
+							<td><label>
+								<?php _e('Only show posts from the last', 'wp_related_posts');?>&nbsp;
+								<select name="wp_rp_max_related_post_age_in_days" id="wp_rp_max_related_post_age_in_days">
+									<option value="0" <?php selected($options['max_related_post_age_in_days'], 0); ?>>Unlimited</option>
+									<option value="30" <?php selected($options['max_related_post_age_in_days'], 30); ?>>1</option>
+									<option value="91" <?php selected($options['max_related_post_age_in_days'], 91); ?>>3</option>
+									<option value="365" <?php selected($options['max_related_post_age_in_days'], 365); ?>>12</option>
+								</select> &nbsp;months.
+							</label></td>
 						</tr>
 					</table>
 
@@ -649,11 +702,6 @@ jQuery(function($) {
 									<input name="wp_rp_on_rss" type="checkbox" id="wp_rp_on_rss" value="yes"<?php checked($options['on_rss']); ?>>
 									<?php _e("Display Related Posts in Feed",'wp_related_posts');?>
 								</label>
-								<br />
-								<label>
-									<input name="wp_rp_show_RP_in_posts" type="checkbox" id="wp_rp_show_RP_in_posts" value="yes"<?php checked($options['show_RP_in_posts']); ?>>
-									<?php _e("Show related posts in article text",'wp_related_posts');?>
-								</label>
 					<?php if($meta['show_traffic_exchange']): ?>
 								<br />
 								<label>
@@ -676,11 +724,11 @@ jQuery(function($) {
 					</table>
 					<p class="submit"><input type="submit" value="<?php _e('Save changes', 'wp_related_posts'); ?>" class="button-primary" /></p>
 
-				</form>
-				<div>
-					* Provided via <a target="_blank" href="http://related-posts.com/tos/">3rd party service</a>.
 				</div>
 			</div>
-		</div>
+			<div id="wp_rp_tos">
+				* Provided via <a target="_blank" href="http://related-posts.com/tos/">3rd party service</a>.
+			</div>
+		</form>
 	</div>
 <?php }

@@ -132,13 +132,23 @@ function wp_rp_upgrade() {
 	}
 }
 
+function wp_rp_related_posts_db_table_uninstall() {
+	global $wpdb;
+
+	$tags_table_name = $wpdb->prefix . "wp_rp_tags";
+
+	$sql = "DROP TABLE " . $tags_table_name;
+
+	$wpdb->query($sql);
+}
+
 function wp_rp_related_posts_db_table_install() {
 	global $wpdb;
 
 	$tags_table_name = $wpdb->prefix . "wp_rp_tags";
 	$sql_tags = "CREATE TABLE $tags_table_name (
 	  post_id mediumint(9),
-	  time timestamp DEFAULT CURRENT_TIMESTAMP,
+	  post_date datetime NOT NULL,
 	  label VARCHAR(32) NOT NULL,
 	  weight float,
 	  INDEX post_id (post_id),
@@ -163,7 +173,7 @@ function wp_rp_install() {
 		'new_user' => true,
 		'show_upgrade_tooltip' => false,
 		'show_install_tooltip' => true,
-		'remote_recommendations' => true,		# WARNING: TODO: Turn this off at the end of this experiment!
+		'remote_recommendations' => false,
 		'show_turn_on_button' => true,
 		'name' => '',
 		'email' => '',
@@ -196,9 +206,9 @@ function wp_rp_install() {
 		'ctr_dashboard_enabled'		=> false,
 		'promoted_content_enabled'	=> false,
 		'enable_themes'				=> false,
-		'show_RP_in_posts' => true,
 		'custom_theme_enabled' => false,
-		'traffic_exchange_enabled' => false
+		'traffic_exchange_enabled' => false,
+		'max_related_post_age_in_days' => 0
 	);
 
 	update_option('wp_rp_meta', $wp_rp_meta);
@@ -207,11 +217,37 @@ function wp_rp_install() {
 	wp_rp_related_posts_db_table_install();
 }
 
-/*function wp_rp_migrate_2_2() {
+function wp_rp_migrate_2_3() {
+	$wp_rp_meta = get_option('wp_rp_meta');
+	$wp_rp_options = get_option('wp_rp_options');
+
+	$wp_rp_meta['version'] = '2.4';
+
+	$wp_rp_options['max_related_post_age_in_days'] = 0;
+
+	wp_rp_related_posts_db_table_uninstall();
+	wp_rp_related_posts_db_table_install();
+
+	update_option('wp_rp_meta', $wp_rp_meta);
+	update_option('wp_rp_options', $wp_rp_options);
+}
+
+function wp_rp_migrate_2_2() {
+	$wp_rp_meta = get_option('wp_rp_meta');
+	$wp_rp_options = get_option('wp_rp_options');
+
+	$wp_rp_meta['version'] = '2.3';
+
 	if(isset($wp_rp_options['show_santa_hat'])) {
 		unset($wp_rp_options['show_santa_hat']);
 	}
-}*/
+	if(isset($wp_rp_options['show_RP_in_posts'])) {
+		unset($wp_rp_options['show_RP_in_posts']);
+	}
+
+	update_option('wp_rp_meta', $wp_rp_meta);
+	update_option('wp_rp_options', $wp_rp_options);
+}
 
 function wp_rp_migrate_2_1() {
 	$wp_rp_meta = get_option('wp_rp_meta');
