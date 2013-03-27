@@ -1,11 +1,10 @@
 ﻿=== Plugin Name ===
-Contributors: jureham
+Contributors: zemanta
 Tags: related,posts,post,related posts,plugin
-Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=LB3MVPLUAWCY6
 License: GPLv2
 Requires at least: 3.3
 Tested up to: 3.5
-Stable tag: 2.4
+Stable tag: 2.6
 
 WordPress Related Posts generates a list of related posts with thumbnails and gives you click-through statistics.
 
@@ -39,6 +38,10 @@ It places a list of links with thumbnails at the bottom of your posts. It increa
 
 Yes, related posts are responsive so they adapt to the screen size to ensure maximum click-through rates.
 
+= Why does Zemanta have 3 similar plugins? What's the difference between them? =
+
+We adopted the principle of having three "release channels". You can try the most experimental (still stable!) features in [Related Posts](http://wordpress.org/extend/plugins/related-posts/ "Related Posts"). The more advanced ones are in [WordPress Related Posts](http://wordpress.org/extend/plugins/wordpress-23-related-posts-plugin/ "WordPress Related Posts"). If you're looking for the Professional version go for [Related Posts by Zemanta](http://wordpress.org/extend/plugins/related-posts-by-zemanta/ "Related Posts by Zemanta").
+
 == Installation ==
 
 = Via admin: =
@@ -60,7 +63,23 @@ Yes, related posts are responsive so they adapt to the screen size to ensure max
 2. WordPress Related Posts reporting real time statistics for mobile and desktop devices.
 3. WordPress Related Posts responsive theme on a Galaxy Nexus and iPhone 4s.
 
+== Upgrade Notice ==
+
 == Changelog ==
+
+= 2.6 =
+* Improved editorial control
+* Changed plugin content filter priority from 101 to 10
+* Improved AB testing on mobile infinite stream
+* Bugfixes
+
+= 2.5 =
+* Mobile themes settings
+* Editorial control
+* New Pinterest inspired theme
+* Support us by displaying our logo (opt-in)
+* Small output html layout change
+* Bugfixes
 
 = 2.4 =
 * Limit related post age
