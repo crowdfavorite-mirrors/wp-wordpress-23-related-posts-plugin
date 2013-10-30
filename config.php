@@ -1,8 +1,8 @@
 <?php
 
 define('WP_RP_STATIC_BASE_URL', 'http://dtmvdvtzf8rz0.cloudfront.net/static/');
-define('WP_RP_STATIC_THEMES_PATH', 'wp-rp-css/');
-define('WP_RP_STATIC_JSON_PATH', 'json/');
+
+define('WP_RP_STATIC_THEMES_PATH', 'static/themes/');
 
 define("WP_RP_DEFAULT_CUSTOM_CSS",
 ".related_post_title {
@@ -25,10 +25,7 @@ define('WP_RP_THUMBNAILS_DEFAULTS_COUNT', 31);
 define("WP_RP_MAX_LABEL_LENGTH", 32);
 
 define("WP_RP_CTR_DASHBOARD_URL", "http://d.zemanta.com/");
-define("WP_RP_STATIC_CTR_PAGEVIEW_FILE", "js/pageview.js");
-
-define("WP_RP_STATIC_RECOMMENDATIONS_JS_FILE", "js/recommendations.js");
-define("WP_RP_STATIC_RECOMMENDATIONS_CSS_FILE", "wp-rp-css/recommendations.css");
+define("WP_RP_STATIC_LOADER_FILE", "js/loader.js");
 
 define("WP_RP_STATIC_INFINITE_RECS_JS_FILE", "js/infiniterecs.js");
 define("WP_RP_STATIC_PINTEREST_JS_FILE", "js/pinterest.js");
@@ -187,11 +184,12 @@ function wp_rp_install() {
 		'turn_on_button_pressed' => false,
 		'show_statistics' => false,
 		'show_traffic_exchange' => false,
-		'show_zemanta_linky_option' => true
+		'show_zemanta_linky_option' => true,
+		'classic_user' => true
 	);
 
 	$wp_rp_options = array(
-		'related_posts_title'			=> __('Related Posts', 'wp_related_posts'),
+		'related_posts_title'			=> __('More from my site', 'wp_related_posts'),
 		'max_related_posts'			=> 6,
 		'exclude_categories'			=> '',
 		'on_single_post'			=> true,
@@ -221,7 +219,7 @@ function wp_rp_install() {
 			'display_thumbnail'			=> false,
 			'display_excerpt'			=> false,
 			'excerpt_max_length'			=> 200,
-			'theme_name' 				=> 'vertical.css',
+			'theme_name' 				=> 'vertical-m.css',
 			'theme_custom_css'			=> WP_RP_DEFAULT_CUSTOM_CSS,
 			'custom_theme_enabled' => false,
 		)
@@ -233,12 +231,31 @@ function wp_rp_install() {
 	wp_rp_related_posts_db_table_install();
 }
 
+function wp_rp_is_classic() {
+	$meta = wp_rp_get_meta();
+	if (isset($meta['classic_user']) && $meta['classic_user']) {
+		return true;
+	}
+	return false;
+}
+
+function wp_rp_migrate_2_8() {
+	global $wpdb;
+
+	$wp_rp_meta = get_option('wp_rp_meta');
+	$wp_rp_meta['version'] = '2.9';
+	$wp_rp_meta['new_user'] = false;
+
+	update_option('wp_rp_meta', $wp_rp_meta);
+}
+
 function wp_rp_migrate_2_7() {
 	global $wpdb;
 
 	$wp_rp_meta = get_option('wp_rp_meta');
 	$wp_rp_meta['version'] = '2.8';
 	$wp_rp_meta['new_user'] = false;
+	$wp_rp_meta['classic_user'] = false;
 
 	$wpdb->query("DELETE FROM $wpdb->postmeta WHERE meta_key IN ('_wp_rp_extracted_image_url', '_wp_rp_extracted_image_url_full')");
 
