@@ -1,14 +1,14 @@
 <?php
 /*
 Plugin Name: WordPress Related Posts
-Version: 2.9
+Version: 3.0
 Plugin URI: http://wordpress.org/extend/plugins/wordpress-23-related-posts-plugin/
 Description: Quickly increase your readers' engagement with your posts by adding Related Posts in the footer of your content. Click on <a href="admin.php?page=wordpress-related-posts">Related Posts tab</a> to configure your settings.
 Author: Zemanta Ltd.
 Author URI: http://www.zemanta.com
 */
 
-define('WP_RP_VERSION', '2.9');
+define('WP_RP_VERSION', '3.0');
 
 define('WP_RP_PLUGIN_FILE', plugin_basename(__FILE__));
 
@@ -507,7 +507,7 @@ function wp_rp_get_related_posts($before_title = '', $after_title = '') {
 		$posts_footer .= '<div class="wp_rp_footer"><a class="wp_rp_edit" href="#" id="wp_rp_edit_related_posts">Edit Related Posts</a></div>';
 	}
 	if ($options['display_zemanta_linky']) {
-		$posts_footer .= '<div class="wp_rp_footer"><a class="wp_rp_backlink" target="_blank" href="http://www.zemanta.com/?wp-related-posts">Zemanta</a></div>';
+		$posts_footer .= '<div class="wp_rp_footer"><a class="wp_rp_backlink" target="_blank" href="http://www.zemanta.com/?wp-related-posts" rel="nofollow">Zemanta</a></div>';
 	}
 
 	$css_classes = 'related_post wp_rp';
