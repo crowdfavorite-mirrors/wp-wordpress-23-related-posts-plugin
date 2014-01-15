@@ -1,6 +1,6 @@
 <?php
 
-define('WP_RP_STATIC_BASE_URL', 'http://dtmvdvtzf8rz0.cloudfront.net/static/');
+define('WP_RP_STATIC_BASE_URL', 'http://wprp.zemanta.com/static/');
 
 define('WP_RP_STATIC_THEMES_PATH', 'static/themes/');
 
@@ -20,6 +20,8 @@ define('WP_RP_THUMBNAILS_NAME', 'wp_rp_thumbnail');
 define('WP_RP_THUMBNAILS_PROP_NAME', 'wp_rp_thumbnail_prop');
 define('WP_RP_THUMBNAILS_WIDTH', 150);
 define('WP_RP_THUMBNAILS_HEIGHT', 150);
+define('WP_RP_CUSTOM_THUMBNAILS_WIDTH', 150);
+define('WP_RP_CUSTOM_THUMBNAILS_HEIGHT', 150);
 define('WP_RP_THUMBNAILS_DEFAULTS_COUNT', 31);
 
 define("WP_RP_MAX_LABEL_LENGTH", 32);
@@ -94,9 +96,7 @@ function wp_rp_update_options($new_options) {
 	global $wp_rp_options;
 
 	$new_options = (array) $new_options;
-
 	$r = update_option('wp_rp_options', $new_options);
-
 	if($r && $wp_rp_options !== false) {
 		$wp_rp_options->exchangeArray($new_options);
 	}
@@ -200,9 +200,13 @@ function wp_rp_install() {
 		'promoted_content_enabled'	=> false,
 		'enable_themes'				=> false,
 		'traffic_exchange_enabled' => false,
+		'custom_size_thumbnail_enabled'	=> false,
+		'custom_thumbnail_width' 	=> WP_RP_CUSTOM_THUMBNAILS_WIDTH,
+		'custom_thumbnail_height' 	=> WP_RP_CUSTOM_THUMBNAILS_HEIGHT,
 		'thumbnail_use_custom'			=> false,
 		'thumbnail_custom_field'		=> false,
 		'display_zemanta_linky'			=> false,
+		'only_admins_can_edit_related_posts' => false,
 
 		'mobile' => array(
 			'display_comment_count'			=> false,
@@ -239,14 +243,86 @@ function wp_rp_is_classic() {
 	return false;
 }
 
+function wp_rp_migrate_3_3() {
+	global $wpdb;
+
+	$wp_rp_meta = get_option('wp_rp_meta');
+	$wp_rp_meta['version'] = '3.3.1';
+	$wp_rp_meta['new_user'] = false;
+	if (floatval($wp_rp_meta['first_version']) < 2.8 && strpos(get_bloginfo('language'), 'en') === 0) { // Enable widget to all "old" users out there (old = users that started with plugin version 2.7 or below), that have their interface in english.
+		$wp_rp_meta['classic_user'] = true;
+	}
+	$wp_rp_options = get_option('wp_rp_options');
+	$wp_rp_options['only_admins_can_edit_related_posts'] = false;
+	update_option('wp_rp_meta', $wp_rp_meta);
+	update_option('wp_rp_options', $wp_rp_options);
+}
+
+function wp_rp_migrate_3_2() {
+	global $wpdb;
+
+	$wp_rp_meta = get_option('wp_rp_meta');
+	$wp_rp_meta['version'] = '3.3';
+	$wp_rp_meta['new_user'] = false;
+	if (floatval($wp_rp_meta['first_version']) < 2.8 && strpos(get_bloginfo('language'), 'en') === 0) { // Enable widget to all "old" users out there (old = users that started with plugin version 2.7 or below), that have their interface in english.
+		$wp_rp_meta['classic_user'] = true;
+	}
+	update_option('wp_rp_meta', $wp_rp_meta);
+
+}
+
+function wp_rp_migrate_3_1() {
+	global $wpdb;
+
+	$wp_rp_meta = get_option('wp_rp_meta');
+	$wp_rp_meta['version'] = '3.2';
+	$wp_rp_meta['new_user'] = false;
+	if (floatval($wp_rp_meta['first_version']) < 2.8 && strpos(get_bloginfo('language'), 'en') === 0) { // Enable widget to all "old" users out there (old = users that started with plugin version 2.7 or below), that have their interface in english.
+		$wp_rp_meta['classic_user'] = true;
+	}
+	$wp_rp_options = get_option('wp_rp_options');
+	$wp_rp_options['custom_size_thumbnail_enabled'] = false;
+	$wp_rp_options['custom_thumbnail_width'] = WP_RP_CUSTOM_THUMBNAILS_WIDTH;
+	$wp_rp_options['custom_thumbnail_height'] = WP_RP_CUSTOM_THUMBNAILS_WIDTH;
+
+	update_option('wp_rp_meta', $wp_rp_meta);
+	update_option('wp_rp_options', $wp_rp_options);
+
+}
+
+
+function wp_rp_migrate_3_0() {
+	global $wpdb;
+
+	$wp_rp_meta = get_option('wp_rp_meta');
+	$wp_rp_meta['version'] = '3.1';
+	$wp_rp_meta['new_user'] = false;
+	if (floatval($wp_rp_meta['first_version']) < 2.8 && strpos(get_bloginfo('language'), 'en') === 0) { // Enable widget to all "old" users out there (old = users that started with plugin version 2.7 or below), that have their interface in english.
+		$wp_rp_meta['classic_user'] = true;
+    }
+	$wp_rp_options = get_option('wp_rp_options');
+	$wp_rp_options['custom_size_thumbnail_enabled'] = false;
+	$wp_rp_options['custom_thumbnail_width'] = WP_RP_CUSTOM_THUMBNAILS_WIDTH;
+	$wp_rp_options['custom_thumbnail_height'] = WP_RP_CUSTOM_THUMBNAILS_WIDTH;
+
+
+	update_option('wp_rp_meta', $wp_rp_meta);
+	update_option('wp_rp_options', $wp_rp_options);
+}
+
 function wp_rp_migrate_2_9() {
 	global $wpdb;
 
 	$wp_rp_meta = get_option('wp_rp_meta');
 	$wp_rp_meta['version'] = '3.0';
 	$wp_rp_meta['new_user'] = false;
+	$wp_rp_options = get_option('wp_rp_options');
+	$wp_rp_options['custom_size_thumbnail_enabled'] = false;
+	$wp_rp_options['custom_thumbnail_width'] = WP_RP_CUSTOM_THUMBNAILS_WIDTH;
+	$wp_rp_options['custom_thumbnail_height'] = WP_RP_CUSTOM_THUMBNAILS_WIDTH;
 
 	update_option('wp_rp_meta', $wp_rp_meta);
+	update_option('wp_rp_options', $wp_rp_options);
 }
 
 function wp_rp_migrate_2_8() {
@@ -255,8 +331,13 @@ function wp_rp_migrate_2_8() {
 	$wp_rp_meta = get_option('wp_rp_meta');
 	$wp_rp_meta['version'] = '2.9';
 	$wp_rp_meta['new_user'] = false;
+	$wp_rp_options = get_option('wp_rp_options');
+	$wp_rp_options['custom_size_thumbnail_enabled'] = false;
+	$wp_rp_options['custom_thumbnail_width'] = WP_RP_CUSTOM_THUMBNAILS_WIDTH;
+	$wp_rp_options['custom_thumbnail_height'] = WP_RP_CUSTOM_THUMBNAILS_WIDTH;
 
 	update_option('wp_rp_meta', $wp_rp_meta);
+	update_option('wp_rp_options', $wp_rp_options);
 }
 
 function wp_rp_migrate_2_7() {
@@ -266,10 +347,15 @@ function wp_rp_migrate_2_7() {
 	$wp_rp_meta['version'] = '2.8';
 	$wp_rp_meta['new_user'] = false;
 	$wp_rp_meta['classic_user'] = false;
+	$wp_rp_options = get_option('wp_rp_options');
+	$wp_rp_options['custom_size_thumbnail_enabled'] = false;
+	$wp_rp_options['custom_thumbnail_width'] = WP_RP_CUSTOM_THUMBNAILS_WIDTH;
+	$wp_rp_options['custom_thumbnail_height'] = WP_RP_CUSTOM_THUMBNAILS_WIDTH;
 
 	$wpdb->query("DELETE FROM $wpdb->postmeta WHERE meta_key IN ('_wp_rp_extracted_image_url', '_wp_rp_extracted_image_url_full')");
 
 	update_option('wp_rp_meta', $wp_rp_meta);
+	update_option('wp_rp_options', $wp_rp_options);
 }
 
 function wp_rp_migrate_2_6() {

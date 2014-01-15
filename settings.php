@@ -60,6 +60,7 @@ function wp_rp_settings_admin_menu() {
 function wp_rp_settings_scripts() {
 	wp_enqueue_script('wp_rp_themes_script', plugins_url('static/js/themes.js', __FILE__), array('jquery'), WP_RP_VERSION);
 	wp_enqueue_script("wp_rp_dashboard_script", plugins_url('static/js/dashboard.js', __FILE__), array('jquery'), WP_RP_VERSION);
+	wp_enqueue_script("wp_rp_extras_script", plugins_url('static/js/extras.js', __FILE__), array('jquery'), WP_RP_VERSION);
 }
 function wp_rp_settings_styles() {
 	wp_enqueue_style("wp_rp_dashboard_style", plugins_url("static/css/dashboard.css", __FILE__), array(), WP_RP_VERSION);
@@ -162,9 +163,14 @@ function wp_rp_settings_page() {
 			'traffic_exchange_enabled' => isset($postdata['wp_rp_traffic_exchange_enabled']),
 			'max_related_post_age_in_days' => (isset($postdata['wp_rp_max_related_post_age_in_days']) && is_numeric(trim($postdata['wp_rp_max_related_post_age_in_days']))) ? intval(trim($postdata['wp_rp_max_related_post_age_in_days'])) : 0,
 
+			'custom_size_thumbnail_enabled' => isset($postdata['wp_rp_custom_size_thumbnail_enabled']) && $postdata['wp_rp_custom_size_thumbnail_enabled'] === 'yes',
+			'custom_thumbnail_width' => isset($postdata['wp_rp_custom_thumbnail_width']) ? intval(trim($postdata['wp_rp_custom_thumbnail_width'])) : WP_RP_CUSTOM_THUMBNAILS_WIDTH ,
+			'custom_thumbnail_height' => isset($postdata['wp_rp_custom_thumbnail_height']) ? intval(trim($postdata['wp_rp_custom_thumbnail_height'])) : WP_RP_CUSTOM_THUMBNAILS_HEIGHT,
+
 			'thumbnail_use_custom' => isset($postdata['wp_rp_thumbnail_use_custom']) && $postdata['wp_rp_thumbnail_use_custom'] === 'yes',
 			'thumbnail_custom_field' => isset($postdata['wp_rp_thumbnail_custom_field']) ? trim($postdata['wp_rp_thumbnail_custom_field']) : '',
 			'display_zemanta_linky' => $meta['show_zemanta_linky_option'] ? isset($postdata['wp_rp_display_zemanta_linky']) : true,
+			'only_admins_can_edit_related_posts' => !empty($postdata['wp_rp_only_admins_can_edit_related_posts']),
 
 			'mobile' => array(
 				'display_comment_count' => isset($postdata['wp_rp_mobile_display_comment_count']),
@@ -415,7 +421,7 @@ function wp_rp_settings_page() {
 							<tr id="wp_rp_<?php echo $platform; ?>_theme_custom_css_wrap" style="display: none; ">
 								<td>
 									<label>
-										<input name="wp_rp_<?php echo $platform; ?>_display_thumbnail" type="checkbox" id="wp_rp_<?php echo $platform; ?>_display_thumbnail" value="yes" <?php checked($options[$platform]["display_thumbnail"]); ?> onclick="wp_rp_display_thumbnail_onclick();" />
+										<input name="wp_rp_<?php echo $platform; ?>_display_thumbnail" type="checkbox" id="wp_rp_<?php echo $platform; ?>_display_thumbnail" value="yes" <?php checked($options[$platform]["display_thumbnail"]); ?> />
 										<?php _e("Display Thumbnails For Related Posts",'wp_related_posts');?>
 									</label><br />
 									<label>
@@ -427,7 +433,7 @@ function wp_rp_settings_page() {
 										<?php _e("Display Publish Date",'wp_related_posts');?>
 									</label><br />
 									<label>
-										<input name="wp_rp_<?php echo $platform; ?>_display_excerpt" type="checkbox" id="wp_rp_<?php echo $platform; ?>_display_excerpt" value="yes" <?php checked($options[$platform]["display_excerpt"]); ?> onclick="wp_rp_display_excerpt_onclick();" >
+										<input name="wp_rp_<?php echo $platform; ?>_display_excerpt" type="checkbox" id="wp_rp_<?php echo $platform; ?>_display_excerpt" value="yes" <?php checked($options[$platform]["display_excerpt"]); ?> />
 										<?php _e("Display Post Excerpt",'wp_related_posts');?>
 									</label>
 									<label id="wp_rp_<?php echo $platform; ?>_excerpt_max_length_label">
@@ -492,6 +498,31 @@ function wp_rp_settings_page() {
 								</td>
 							</tr>
 						</tbody>
+					</table>
+					<h3>Custom Size Thumbnails</h3>
+					<table class="form-table">
+						<tbody>
+						<tr><td>
+								Our themes were created with thumbnail size of 150x150px in mind.<br>
+								If you want to use custom sizes, override theme's CSS rules in the Custom CSS section under Theme Settings above.
+						</td></tr>
+						<tr><td>
+								<label>
+									<input name="wp_rp_custom_size_thumbnail_enabled" type="checkbox" id="wp_rp_custom_size_thumbnail_enabled" value="yes" <?php checked($options['custom_size_thumbnail_enabled']); ?> />
+									<?php _e("Use Custom Size Thumbnails",'wp_related_posts');?>
+								</label><br />
+								<div id="wp_rp_custom_thumb_sizes_settings" style="display:none">
+									<label>
+										<?php _e("Custom Width (px)",'wp_related_posts');?>
+										<input name="wp_rp_custom_thumbnail_width" type="text" id="wp_rp_custom_thumbnail_width" class="small-text" value="<?php esc_attr_e($options['custom_thumbnail_width']); ?>" />
+									</label>
+									<label>
+										<?php _e("Custom Height (px)",'wp_related_posts');?>
+										<input name="wp_rp_custom_thumbnail_height" type="text" id="wp_rp_custom_thumbnail_height" class="small-text" value="<?php esc_attr_e($options['custom_thumbnail_height']); ?>" />
+									</label>
+								</div>
+							</td></tr>
+						</tbody>
 					</table><?php
 
 /**************************************
@@ -525,7 +556,7 @@ function wp_rp_settings_page() {
 							</td>
 						</tr>
 						<tr valign="top">
-							<td colspan="2"><?php if(strpos(get_bloginfo('language'), 'en') === 0): ?>
+							<td colspan="2"><?php if(strpos(get_bloginfo('language'), 'en') === 0 || $meta['classic_user']): ?>
 								<br/>
 								<label>
 									<input name="wp_rp_classic_state" type="checkbox" id="wp_rp_classic_state" value="yes" <?php checked($meta['classic_user']); ?>>
@@ -564,6 +595,12 @@ function wp_rp_settings_page() {
 									<input name="wp_rp_display_zemanta_linky" type="checkbox" id="wp_rp_display_zemanta_linky" value="yes" <?php checked($options['display_zemanta_linky']); ?> />
 									<?php _e("Support us (show our logo)",'wp_related_posts');?>
 								</label><?php endif; ?>
+									<div>
+									<label>
+										<input type="checkbox" name="wp_rp_only_admins_can_edit_related_posts" id="wp_rp_only_admins_can_edit_related_posts" value="yes" <?php checked($options['only_admins_can_edit_related_posts']); ?> />
+										<?php _e("Only admins can edit Related Posts",'wp_related_posts');?>
+									</label>
+								</div>
 							</td>
 						</tr>
 					</table>
@@ -573,4 +610,4 @@ function wp_rp_settings_page() {
 			</div>
 		</form>
 	</div>
-<?php }
+<?php } ?>
